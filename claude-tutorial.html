@@ -312,6 +312,18 @@ description: Draft my weekly research update from git history and notes. Use whe
   </table>
   <p>Say <i>what</i> it does and <i>when</i> to use it, including phrases you'd actually type.</p>
 
+  <h3 id="skill-vs-command">Skill or slash command? Not the same thing</h3>
+  <p>People often mix these up, because both are Markdown files and both can show up in the <code>/</code> menu. The key difference is <b>who decides when it runs</b>: Claude picks up a skill on its own when your request matches it. A slash command runs only when you type it.</p>
+  <div class="scroll"><table>
+    <tr><th></th><th>Skill</th><th>Slash command</th></tr>
+    <tr><td><b>Who starts it</b></td><td>Claude, automatically, when your request matches the description. You can also type <code>/skill-name</code>.</td><td>Only you, by typing <code>/name</code>. It never runs on its own.</td></tr>
+    <tr><td><b>What it is</b></td><td>A folder: <code>SKILL.md</code> plus optional scripts, templates and reference files.</td><td>Built-in: a control in Claude Code itself (<code>/compact</code>, <code>/model</code>). Custom: one saved prompt in <code>.claude/commands/name.md</code>.</td></tr>
+    <tr><td><b>What it changes</b></td><td>How a kind of <i>task</i> gets done.</td><td>Built-in ones change the <i>session</i>: context, model, tools, permissions.</td></tr>
+    <tr><td><b>Context cost</b></td><td>Name and description are always loaded. The full file loads when it triggers.</td><td>Nothing until you run it.</td></tr>
+    <tr><td><b>Pick it when</b></td><td>Claude should apply the procedure whenever it fits, even if you forget to ask.</td><td>You want a deliberate action at a moment you choose.</td></tr>
+  </table></div>
+  <p>The two are getting closer: a custom command is basically a skill that only runs when you call it. To make a skill work that way (for example, a deploy you never want triggered by accident), add <code>disable-model-invocation: true</code> to its frontmatter.</p>
+
   <h3>Skills vs. the alternatives</h3>
   <div class="scroll"><table>
     <tr><th>Need</th><th>Use</th></tr>
@@ -368,14 +380,19 @@ You are a strict senior reviewer.
 - For each: file:line, what is wrong, a concrete fix.
 - Do not edit files. Do not praise. If nothing is wrong, say so in one line.</code></pre>
 
+  <h3>Mix models across a team to save cost</h3>
+  <p>A team of subagents doesn't all have to run on the same model. Each agent can use its own, set with the <code>model:</code> line in its file: <code>haiku</code>, <code>sonnet</code>, <code>opus</code>, or <code>inherit</code> to match the main session. Give high-volume, routine work (searching, scanning, summarising) to a small, fast model. Save the strongest model for judgment calls such as planning, debugging and the final review. You get the same result for a fraction of the tokens, and your usage limit lasts longer.</p>
+  <div class="flow" aria-label="Example team on mixed models"><span>Main session (Opus): plans</span><i>→</i><span>3 × Haiku scouts: search in parallel</span><i>→</i><span>Sonnet: writes tests</span><i>→</i><span>Opus: final review</span></div>
+  <p>You can also ask in the prompt: "Use Haiku subagents to scan each module for unused functions, then review their findings yourself."</p>
+
   <h3>More agent ideas</h3>
-  <table>
-    <tr><th>Agent</th><th>Tools</th><th>Job</th></tr>
-    <tr><td><code>literature-scout</code></td><td>Read, WebSearch</td><td>Find and summarise papers on a question, with citations.</td></tr>
-    <tr><td><code>test-writer</code></td><td>Read, Write, Bash</td><td>Write tests for a given module and run them until green.</td></tr>
-    <tr><td><code>debugger</code></td><td>Read, Grep, Bash</td><td>Reproduce a failure, trace the cause, propose a fix without applying it.</td></tr>
-    <tr><td><code>doc-checker</code></td><td>Read, Grep</td><td>Find places where docs and code disagree.</td></tr>
-  </table>
+  <div class="scroll"><table>
+    <tr><th>Agent</th><th>Tools</th><th>Model</th><th>Job</th></tr>
+    <tr><td><code>literature-scout</code></td><td>Read, WebSearch</td><td>sonnet</td><td>Find and summarise papers on a question, with citations.</td></tr>
+    <tr><td><code>test-writer</code></td><td>Read, Write, Bash</td><td>sonnet</td><td>Write tests for a given module and run them until green.</td></tr>
+    <tr><td><code>debugger</code></td><td>Read, Grep, Bash</td><td>opus</td><td>Reproduce a failure, trace the cause, propose a fix without applying it.</td></tr>
+    <tr><td><code>doc-checker</code></td><td>Read, Grep</td><td>haiku</td><td>Find places where docs and code disagree.</td></tr>
+  </table></div>
 
   <h3>Writing a good delegation</h3>
   <p>A subagent cannot see your conversation. A good brief includes the goal, the relevant paths, what "done" looks like, and the format of the answer. Compare:</p>
@@ -385,7 +402,7 @@ Strong:  "Find why login returns 401 for valid users. Start in auth/ and
           cause with file:line and a proposed fix. Do not edit anything."</code></pre>
 
   <div class="note"><strong>Skills vs. subagents</strong>A skill teaches Claude <em>how</em> to do something in the current conversation. A subagent does the work somewhere else and hands back the result. They combine well: a subagent can use a skill.</div>
-  <div class="note warn"><strong>Trade-offs</strong>Each subagent spends its own tokens, so many parallel agents use your usage limit fast. Vague briefs produce vague results. For small tasks, doing it directly is cheaper than delegating.</div>
+  <div class="note warn"><strong>Trade-offs</strong>Each subagent spends its own tokens, so many parallel agents use your usage limit fast. Put routine agents on a cheaper model. Vague briefs produce vague results. For small tasks, doing it directly is cheaper than delegating.</div>
 </div></section>
 
 <!-- ============ 4 COMMANDS ============ -->
@@ -393,6 +410,7 @@ Strong:  "Find why login returns 401 for valid users. Start in auth/ and
   <div class="num">04</div><h2>Slash commands</h2>
   <p class="sub">Type <code>/</code> in the prompt to see everything available. These ten earn their keep first.</p>
   <p>Slash commands control the session itself (context, model, tools) rather than the task. Mastering a handful gives you more leverage than any prompt trick, because most degraded answers come from a cluttered context window, not from a bad question.</p>
+  <div class="note warn"><strong>A slash command is not a skill</strong>You run a slash command by typing it, and it does one thing right away. Claude never starts it for you. A skill is a playbook that <em>Claude</em> chooses to load when your request matches its description. So <code>/compact</code> manages your session, while a <code>weekly-report</code> skill teaches Claude how to do a task. Both appear in the <code>/</code> menu, but only skills can trigger on their own. <a href="#skill-vs-command">Full comparison in section 02 →</a></div>
   <div class="filter">
     <input id="q" type="search" placeholder="Filter commands, e.g. context, undo, model…" aria-label="Filter slash commands" autocomplete="off">
     <span id="count" role="status" aria-live="polite"></span>
